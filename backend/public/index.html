@@ -7,9 +7,13 @@
     <title>Sales Dashboard</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
+    
+    <!-- Include jsPDF and jsPDF-AutoTable -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.4/xlsx.full.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/docxtemplater/3.28.1/docxtemplater.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.24/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/docx/7.1.1/docx.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
@@ -18,22 +22,15 @@
         <a class="navbar-brand" href="#">Sales Dashboard</a>
         <div class="collapse navbar-collapse">
             <ul class="navbar-nav ml-auto">
-                <li class="nav-item">
-                    <a class="nav-link" href="index.html">Dashboard</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="add-product.html">Add Product</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="sell-product.html">Sell Product</a>
-                </li>
+                <li class="nav-item"><a class="nav-link" href="index.html">Dashboard</a></li>
+                <li class="nav-item"><a class="nav-link" href="add-product.html">Add Product</a></li>
+                <li class="nav-item"><a class="nav-link" href="sell-product.html">Sell Product</a></li>
             </ul>
         </div>
     </nav>
 
     <div class="container my-4">
         <h2>Sales Dashboard</h2>
-
         <div class="row mb-4">
             <div class="col-md-12">
                 <button id="export-pdf" class="btn btn-primary">Export to PDF</button>
@@ -48,7 +45,6 @@
                 <p>Total Products: <span id="totalProducts">0</span></p>
                 <p>Products in Stock: <span id="inStock">0</span></p>
             </div>
-
             <div class="col-md-6">
                 <h3>Sales Data</h3>
                 <p>Total Sales: <span id="totalSales">0</span></p>
@@ -56,49 +52,14 @@
             </div>
         </div>
 
-        <div class="row mb-4">
-            <div class="col-md-3">
-                <input type="text" id="searchProduct" class="form-control" placeholder="Search by Product Name">
-            </div>
-            <div class="col-md-3">
-                <input type="date" id="searchDate" class="form-control" placeholder="Search by Date">
-            </div>
-            <div class="col-md-3">
-                <select id="searchMonth" class="form-control">
-                    <option value="">Search by Month</option>
-                    <option value="1">January</option>
-                    <option value="2">February</option>
-                    <option value="3">March</option>
-                    <option value="4">April</option>
-                    <option value="5">May</option>
-                    <option value="6">June</option>
-                    <option value="7">July</option>
-                    <option value="8">August</option>
-                    <option value="9">September</option>
-                    <option value="10">October</option>
-                    <option value="11">November</option>
-                    <option value="12">December</option>
-                </select>
-            </div>
-            <div class="col-md-3">
-                <select id="searchYear" class="form-control">
-                    <option value="">Search by Year</option>
-                    <option value="2025">2025</option>
-                    <option value="2024">2024</option>
-                    <option value="2023">2023</option>
-                    <option value="2022">2022</option>
-                </select>
-            </div>
-        </div>
+        <h3>Sales Growth Comparison</h3>
+        <p>Year-over-Year (YoY) Growth: <span id="yoyGrowth">0%</span></p>
+        <p>Month-over-Month (MoM) Growth: <span id="momGrowth">0%</span></p>
 
-        <div class="row mb-4">
-            <div class="col-md-3">
-                <button id="resetProductSearch" class="btn btn-secondary w-100">Reset Product Search</button>
-            </div>
-            <div class="col-md-3">
-                <button id="resetSalesSearch" class="btn btn-secondary w-100">Reset Sales Search</button>
-            </div>
-        </div>
+        <h3>Profitability Analysis</h3>
+        <p>Gross Profit Per Product: <span id="grossProfit">0</span></p>
+        <p>High-Margin Products: <span id="highMargin">0</span></p>
+        <p>Low-Margin Products: <span id="lowMargin">0</span></p>
 
         <h3>Product Records</h3>
         <table id="productTable" class="table table-bordered">
@@ -128,7 +89,6 @@
             <tbody></tbody>
         </table>
 
-        <!-- Charts for Monthly Sales and Monthly Product Stock -->
         <div class="row mb-4">
             <div class="col-md-6">
                 <h3>Monthly Sales</h3>
@@ -139,9 +99,21 @@
                 <canvas id="monthlyStockChart" width="400" height="200"></canvas>
             </div>
         </div>
+
+        <h3>Top-Selling Products</h3>
+        <canvas id="topSellingProductsChart" width="400" height="200"></canvas>
+
+        <h3>Top 10 Searched Products</h3>
+        <canvas id="topSearchedProductsChart" width="400" height="200"></canvas>
+
+        <h3>Drill-Down Reports</h3>
+        <p>Click on any product name in the table to view its sales history.</p>
+
+        <h3>Scheduled Reports</h3>
+        <p>Set up daily, weekly, or monthly reports to be emailed automatically.</p>
+        <button id="scheduleReport" class="btn btn-info">Schedule Report</button>
     </div>
 
     <script src="index.js"></script>
 </body>
-
 </html>

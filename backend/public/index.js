@@ -9,142 +9,167 @@ document.addEventListener('DOMContentLoaded', async function () {
     const monthlyStockChartCtx = document.getElementById('monthlyStockChart').getContext('2d');
     const monthlySalesChartCtx = document.getElementById('monthlySalesChart').getContext('2d');
 
+    let stockChart, salesChart;
+
     // Helper function to format dates
     function formatDate(date) {
         const parsedDate = new Date(date);
         return !isNaN(parsedDate) ? parsedDate.toLocaleDateString() : 'Invalid Date';
     }
 
-    // Fetch products data and populate the product table
+    // Fetch products from the API
     async function fetchProducts() {
         try {
             const response = await fetch('http://localhost:5021/api/products');
             const products = await response.json();
-            productTable.innerHTML = ''; // Clear table before updating
+            productTable.innerHTML = '';
 
-            // Populate product table
+            // Populate the product table
             products.forEach(product => {
                 const row = productTable.insertRow();
                 row.insertCell(0).textContent = product.name;
                 row.insertCell(1).textContent = product.category;
                 row.insertCell(2).textContent = `₹${product.price.toFixed(2)}`;
                 row.insertCell(3).textContent = product.stock;
-                row.insertCell(4).textContent = formatDate(product.dateAdded);  // Ensure correct date format
+                row.insertCell(4).textContent = formatDate(product.dateAdded);
             });
 
-            // Update product statistics
+            // Update summary metrics
             totalProducts.textContent = products.length;
-            const totalStock = products.reduce((acc, product) => acc + product.stock, 0);
-            inStock.textContent = totalStock;
+            inStock.textContent = products.reduce((acc, product) => acc + product.stock, 0);
 
-            // Update monthly stock chart
-            const categories = [...new Set(products.map(p => p.category))];
-            const categoryStock = categories.map(category => ({
-                label: category,
-                stock: products.filter(p => p.category === category).reduce((acc, p) => acc + p.stock, 0)
-            }));
+            // Update the stock chart
+            updateStockChart(products);
 
-            new Chart(monthlyStockChartCtx, {
-                type: 'bar',
-                data: {
-                    labels: categories,
-                    datasets: [{
-                        label: 'Stock by Category',
-                        data: categoryStock.map(c => c.stock),
-                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                        borderColor: 'rgba(75, 192, 192, 1)',
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    scales: {
-                        y: { beginAtZero: true }
-                    }
-                }
-            });
-
-            return products; // Return products for use in fetchSales
+            return products;
         } catch (error) {
             console.error('Error fetching products:', error);
             return [];
         }
     }
 
-    // Fetch sales data and populate the sales table
+    // Fetch sales from the API and map product names
     async function fetchSales(products) {
         try {
             const response = await fetch('http://localhost:5021/api/sales');
             const sales = await response.json();
-            salesTable.innerHTML = ''; // Clear table before updating
+            salesTable.innerHTML = '';
 
-            // Create a map of products for quick lookup by productId
-            const productMap = new Map();
+            // Create a map of product IDs to product names
+            const productMap = new Map(products.map(product => [product._id.$oid, product]));
 
-            products.forEach(product => {
-                // Ensure both productId from sales and _id.$oid are strings for comparison 
-                productMap.set(product._id, product);
-                // console.log ("hello",product)
-            });
-
-            // Debugging: Log the product map
-            console.log('Product Map:', productMap);
-
-            console.log('sales',sales);
-
-            // Populate sales table with product details
+            // Populate the sales table
             sales.forEach(sale => {
                 const row = salesTable.insertRow();
+                const saleProductId = sale.productId?.$oid; // Extract the nested $oid
+                const product = saleProductId ? productMap.get(saleProductId) : null;
 
-                const productId = sale.productId._id; // Make sure this is the correct reference
-                const product = productMap.get(productId); // Use the productId to find the product
+                // Log mismatched product IDs for debugging
+                if (!product) {
+                    console.warn(`Product ID not found: ${saleProductId}`);
+                }
 
-                // Debugging: Log the sale and the product info
-                console.log('Sale Product ID:', productId, 'Product:', product);
-
-                const productName = product ? product.name : 'Product Not Found'; // Handle missing product
-                row.insertCell(0).textContent = productName;
+                row.insertCell(0).textContent = product ? product.name : 'Unknown Product';
                 row.insertCell(1).textContent = sale.quantity;
                 row.insertCell(2).textContent = `₹${sale.price.toFixed(2)}`;
                 row.insertCell(3).textContent = `₹${sale.totalPrice.toFixed(2)}`;
-                row.insertCell(4).textContent = formatDate(sale.saleDate);  // Ensure correct date format
+                row.insertCell(4).textContent = formatDate(sale.saleDate);
             });
 
-            // Update sales statistics
-            const totalRevenueAmount = sales.reduce((acc, sale) => acc + sale.totalPrice, 0);
-            totalRevenue.textContent = `₹${totalRevenueAmount.toFixed(2)}`;
+            // Update summary metrics
+            totalRevenue.textContent = `₹${sales.reduce((acc, sale) => acc + sale.totalPrice, 0).toFixed(2)}`;
             totalSales.textContent = sales.length;
 
-            // Update monthly sales chart
-            const monthlySales = Array(12).fill(0);
-            sales.forEach(sale => {
-                const month = new Date(sale.saleDate).getMonth();
-                monthlySales[month] += sale.totalPrice;
-            });
-
-            new Chart(monthlySalesChartCtx, {
-                type: 'line',
-                data: {
-                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-                    datasets: [{
-                        label: 'Monthly Sales Revenue',
-                        data: monthlySales,
-                        fill: false,
-                        borderColor: 'rgba(75, 192, 192, 1)',
-                        tension: 0.1
-                    }]
-                },
-                options: {
-                    scales: {
-                        y: { beginAtZero: true }
-                    }
-                }
-            });
+            // Update the sales chart
+            updateSalesChart(sales);
         } catch (error) {
             console.error('Error fetching sales:', error);
         }
     }
 
-    // Initial data fetch
+    // Update the stock chart
+    function updateStockChart(products) {
+        const categories = [...new Set(products.map(p => p.category))];
+        const categoryStock = categories.map(category =>
+            products.filter(p => p.category === category).reduce((acc, p) => acc + p.stock, 0)
+        );
+
+        if (stockChart) stockChart.destroy();
+        stockChart = new Chart(monthlyStockChartCtx, {
+            type: 'bar',
+            data: {
+                labels: categories,
+                datasets: [{
+                    label: 'Stock by Category',
+                    data: categoryStock,
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: { scales: { y: { beginAtZero: true } } }
+        });
+    }
+
+    // Update the sales chart
+    function updateSalesChart(sales) {
+        const monthlySales = Array(12).fill(0);
+        sales.forEach(sale => {
+            const month = new Date(sale.saleDate).getMonth();
+            monthlySales[month] += sale.totalPrice;
+        });
+
+        if (salesChart) salesChart.destroy();
+        salesChart = new Chart(monthlySalesChartCtx, {
+            type: 'line',
+            data: {
+                labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+                datasets: [{
+                    label: 'Monthly Sales',
+                    data: monthlySales,
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 1,
+                    fill: false
+                }]
+            },
+            options: { scales: { y: { beginAtZero: true } } }
+        });
+    }
+
+    // Export to PDF
+    document.getElementById('export-pdf').addEventListener('click', function () {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        doc.text('Product Table', 10, 10);
+        doc.autoTable({ html: '#productTable' });
+        doc.text('Sales Table', 10, doc.autoTable.previous.finalY + 10);
+        doc.autoTable({ html: '#salesTable' });
+        doc.save('report.pdf');
+    });
+
+    // Export to Excel
+    document.getElementById('export-excel').addEventListener('click', function () {
+        const workbook = XLSX.utils.book_new();
+        const productWorksheet = XLSX.utils.table_to_sheet(document.getElementById('productTable'));
+        XLSX.utils.book_append_sheet(workbook, productWorksheet, 'Products');
+        const salesWorksheet = XLSX.utils.table_to_sheet(document.getElementById('salesTable'));
+        XLSX.utils.book_append_sheet(workbook, salesWorksheet, 'Sales');
+        XLSX.writeFile(workbook, 'report.xlsx');
+    });
+
+    // Export to Word
+    document.getElementById('export-word').addEventListener('click', function () {
+        const docx = window.docx;
+        const doc = new docx.Document();
+        doc.addSection({
+            children: [new docx.Paragraph('Product and Sales Report')]
+        });
+        docx.Packer.toBlob(doc).then(blob => {
+            saveAs(blob, 'report.docx');
+        });
+    });
+
+    // Fetch products and sales data
     const products = await fetchProducts();
     await fetchSales(products);
 });

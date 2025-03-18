@@ -1,6 +1,6 @@
 const express = require('express');
 const Sale = require('../models/Sale');
-const Product = require('../models/Product');
+const Product = require('../models/product');
 const router = express.Router();
 
 // POST a sale
@@ -40,7 +40,8 @@ router.post('/add', async (req, res) => {
 router.get('/', async (req, res) => {
   try {
     // Fetch all sales and populate the productId field with the product name, price, and category
- 
+    const sales = await Sale.find().populate('productId', 'name price category');  // Use populate to get product details
+
     // Format sale date to a readable format if required (e.g., "YYYY-MM-DD")
     const formattedSales = sales.map(sale => {
       sale.saleDate = sale.saleDate.toISOString().split('T')[0];  // Format date to "YYYY-MM-DD"
