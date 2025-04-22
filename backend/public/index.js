@@ -28,6 +28,7 @@ document.addEventListener('DOMContentLoaded', async function () {
             products.forEach(product => {
                 const row = productTable.insertRow();
                 row.insertCell(0).textContent = product.name;
+               // console.log(product.name);
                 row.insertCell(1).textContent = product.category;
                 row.insertCell(2).textContent = `₹${product.price.toFixed(2)}`;
                 row.insertCell(3).textContent = product.stock;
@@ -47,45 +48,38 @@ document.addEventListener('DOMContentLoaded', async function () {
             return [];
         }
     }
-
-    // Fetch sales from the API and map product names
-    async function fetchSales(products) {
+    async function fetchSales() {
         try {
             const response = await fetch('http://localhost:5021/api/sales');
             const sales = await response.json();
             salesTable.innerHTML = '';
-
-            // Create a map of product IDs to product names
-            const productMap = new Map(products.map(product => [product._id.$oid, product]));
-
+    
             // Populate the sales table
             sales.forEach(sale => {
                 const row = salesTable.insertRow();
-                const saleProductId = sale.productId?.$oid; // Extract the nested $oid
-                const product = saleProductId ? productMap.get(saleProductId) : null;
-
-                // Log mismatched product IDs for debugging
-                if (!product) {
-                    console.warn(`Product ID not found: ${saleProductId}`);
-                }
-
+    
+                // Access the product details directly from sale.productId
+                const product = sale.productId; // product details are now directly in the sale record
+    
+                // Insert data into the table
                 row.insertCell(0).textContent = product ? product.name : 'Unknown Product';
                 row.insertCell(1).textContent = sale.quantity;
                 row.insertCell(2).textContent = `₹${sale.price.toFixed(2)}`;
                 row.insertCell(3).textContent = `₹${sale.totalPrice.toFixed(2)}`;
                 row.insertCell(4).textContent = formatDate(sale.saleDate);
             });
-
+    
             // Update summary metrics
             totalRevenue.textContent = `₹${sales.reduce((acc, sale) => acc + sale.totalPrice, 0).toFixed(2)}`;
             totalSales.textContent = sales.length;
-
+    
             // Update the sales chart
             updateSalesChart(sales);
         } catch (error) {
             console.error('Error fetching sales:', error);
         }
     }
+    
 
     // Update the stock chart
     function updateStockChart(products) {

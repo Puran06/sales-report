@@ -34,6 +34,7 @@ router.post('/', async (req, res) => {
 
     // Save the product to the database
     await newProduct.save();
+    console.log(newProduct);
 
     // Return the created product as a response
     res.status(201).json(newProduct);
@@ -46,6 +47,10 @@ router.post('/', async (req, res) => {
 // GET a single product by ID
 router.get('/:id', async (req, res) => {
   const productId = req.params.id;
+
+  // Check if the product ID is provided
+ // console.log('Product ID:', productId);
+ 
 
   // Validate the product ID format
   if (!mongoose.Types.ObjectId.isValid(productId)) {

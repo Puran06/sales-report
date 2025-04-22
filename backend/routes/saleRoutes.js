@@ -6,6 +6,7 @@ const router = express.Router();
 // POST a sale
 router.post('/add', async (req, res) => {
   const { productId, quantity, price, saleDate } = req.body;
+  
 
   try {
     const product = await Product.findById(productId);
@@ -28,7 +29,11 @@ router.post('/add', async (req, res) => {
       saleDate: new Date(saleDate),
     });
 
+    
+  
+
     await newSale.save();
+  
 
     res.status(201).json({ message: 'Sale recorded successfully', sale: newSale });
   } catch (error) {
@@ -41,6 +46,8 @@ router.get('/', async (req, res) => {
   try {
     // Fetch all sales and populate the productId field with the product name, price, and category
     const sales = await Sale.find().populate('productId', 'name price category');  // Use populate to get product details
+
+    
 
     // Format sale date to a readable format if required (e.g., "YYYY-MM-DD")
     const formattedSales = sales.map(sale => {
